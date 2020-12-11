@@ -90,6 +90,7 @@ class uBarrierInputServerDevice : public BHandler, public BInputServerDevice {
 		BString				fServerKeymap;
 		BString				fServerAddress;
 		BString				fClientName;
+		bool				fEnableClipboard;
 
 	volatile bool			fUpdateSettings;
 

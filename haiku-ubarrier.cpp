@@ -183,6 +183,7 @@ uBarrierInputServerDevice::uBarrierInputServerDevice()
 	fServerAddress(NULL),
 	fServerKeymap(NULL),
 	fClientName(DEFAULT_NAME),
+	fEnableClipboard(false),
 	fUpdateSettings(false),
 	fKeymapLock("barrier keymap lock")
 {
@@ -283,22 +284,27 @@ uBarrierInputServerDevice::MessageReceived(BMessage* message)
 		}
 		case B_CLIPBOARD_CHANGED:
 		{
-			const char *text = NULL;
-			ssize_t len = 0;
-			BMessage *clip = NULL;
-			if (be_clipboard->Lock()) {
-				clip = be_clipboard->Data();
-				if (clip != NULL) {
-					clip->FindData("text/plain", B_MIME_TYPE,
-						(const void **)&text, &len);
+			// BUG, returns "ERROR: invalid message from client: DCLP".
+			// Disabled by default.
+			if(fEnableClipboard == true)
+			{
+				const char *text = NULL;
+				ssize_t len = 0;
+				BMessage *clip = NULL;
+				if (be_clipboard->Lock()) {
+					clip = be_clipboard->Data();
+					if (clip != NULL) {
+						clip->FindData("text/plain", B_MIME_TYPE,
+							(const void **)&text, &len);
+					}
+					be_clipboard->Unlock();
 				}
-				be_clipboard->Unlock();
+				if (len > 0 && text != NULL) {
+					uBarrierSendClipboard(fContext, text);
+					TRACE("barrier: data added to clipboard\n");
+				} else
+					TRACE("barrier: couldn't add data to clipboard\n");
 			}
-			if (len > 0 && text != NULL) {
-				uBarrierSendClipboard(fContext, text);
-				TRACE("barrier: data added to clipboard\n");
-			} else
-				TRACE("barrier: couldn't add data to clipboard\n");
 		}
 		default:
 			BHandler::MessageReceived(message);
@@ -420,6 +426,7 @@ uBarrierInputServerDevice::_UpdateSettings()
 	fServerKeymap = get_driver_parameter(handle, "server_keymap", NULL, NULL);
 	fServerAddress = get_driver_parameter(handle, "server", NULL, NULL);
 	fClientName = get_driver_parameter(handle, "client_name", DEFAULT_NAME, DEFAULT_NAME);
+	fEnableClipboard = get_driver_boolean_parameter(handle, "enableClipboard", false, false); //Get the config variable and set the value. Default is false!
 
 	unload_driver_settings(handle);
 }
